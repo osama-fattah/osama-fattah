@@ -6,7 +6,7 @@ I build **production GenAI systems**: RAG pipelines and multi-agent workflows th
 - **Built:** [Actum News](https://play.google.com/store/apps/details?id=com.actummain), an AI news-summarisation app with 10k+ downloads (co-founder, AI engineer)
 - **Stack:** Python · LangGraph · LangChain · LlamaIndex · AWS Bedrock · Azure OpenAI · Vertex AI · PyTorch · Docker · Kubernetes · Terraform
 - **Certified:** AWS Generative AI Developer – Professional · Azure AI Engineer (AI-102) · Google GenAI Leader
-- **Open to:** AI / GenAI Engineer roles in **Ireland** 🇮🇪
+- **Open to:** AI Engineer roles, willing to relocate
 
 #### Featured
 
