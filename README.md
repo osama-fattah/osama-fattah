@@ -13,6 +13,9 @@ I build **production GenAI systems**: RAG pipelines and multi-agent workflows th
 **[RegRAG](https://github.com/osama-fattah/regrag)**: an agentic RAG assistant for pharma GxP documents that cites every answer, refuses to guess, redacts PII and logs an audit trail, with an evaluation suite that gates CI.
 [Live demo](https://regrag-demo.streamlit.app) · LangGraph · hybrid retrieval · Bedrock / Azure OpenAI
 
+**[dq-guard](https://github.com/osama-fattah/dq-guard)**: declarative data-quality gates for batch pipelines. Define checks in YAML (nulls, duplicates, allowed codes, ranges, freshness) and stop a bad load before it reaches a dashboard or a model.
+Python · pandas · Airflow / CI gating
+
 #### Get in touch
 
 [LinkedIn](https://linkedin.com/in/osama-fattah-41b31a16b)
