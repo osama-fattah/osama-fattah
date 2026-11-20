@@ -62,6 +62,21 @@ jobs:
             gh repo create "$OWNER/$REPO" --public --description "$DESCRIPTION"
           fi
 
+      - name: Refuse AI attribution in new commits
+        run: |
+          base=""
+          if git fetch -q "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${REPO}.git" main 2>/dev/null; then
+            base="FETCH_HEAD"
+          fi
+          range="${base:+$base..}HEAD"
+          bad=$(git log --format='%H %an <%ae> | %cn <%ce>%n%B' "$range" \
+            | grep -i -E 'anthropic|co-authored-by:.*claude|claude-session|generated with claude|^[0-9a-f]{40} claude ' || true)
+          if [[ -n "$bad" ]]; then
+            echo "::error::new commits credit Claude/AI; fix authors and messages before publishing"
+            echo "$bad"
+            exit 1
+          fi
+
       - name: Fast-forward main
         run: |
           git push "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${REPO}.git" HEAD:refs/heads/main
