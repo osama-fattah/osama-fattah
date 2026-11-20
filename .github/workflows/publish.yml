@@ -1,0 +1,70 @@
+# Publishes a prepared branch to its own repository.
+#
+# Push the full history of a project to a branch named publish/<repo> in this
+# repository, then run this workflow with repo=<repo>. It creates
+# osama-fattah/<repo> if it does not exist, fast-forwards its main branch to the
+# prepared history (never force), and deletes the publish/<repo> branch.
+#
+# Requires the PUBLISH_TOKEN secret: a fine-grained token with access to all
+# repositories and Administration, Contents and Workflows read/write.
+name: publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      repo:
+        description: "Target repository name (osama-fattah/<repo>)"
+        required: true
+      description:
+        description: "Repository description, used only when creating it"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-${{ inputs.repo }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      OWNER: osama-fattah
+      REPO: ${{ inputs.repo }}
+      DESCRIPTION: ${{ inputs.description }}
+      GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+    steps:
+      - name: Validate input
+        run: |
+          if [[ ! "$REPO" =~ ^[A-Za-z0-9._-]{1,100}$ || "$REPO" == "$OWNER" ]]; then
+            echo "::error::invalid target repository name: $REPO"
+            exit 1
+          fi
+          if [[ -z "$GH_TOKEN" ]]; then
+            echo "::error::PUBLISH_TOKEN secret is not set"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+        with:
+          ref: publish/${{ inputs.repo }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Create repository if missing
+        run: |
+          if gh repo view "$OWNER/$REPO" >/dev/null 2>&1; then
+            echo "Repository $OWNER/$REPO exists"
+          else
+            gh repo create "$OWNER/$REPO" --public --description "$DESCRIPTION"
+          fi
+
+      - name: Fast-forward main
+        run: |
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${REPO}.git" HEAD:refs/heads/main
+          echo "Published $(git rev-parse --short HEAD) to https://github.com/${OWNER}/${REPO}" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove publish branch
+        run: git push "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${OWNER}.git" --delete "publish/${REPO}"
