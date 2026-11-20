@@ -20,6 +20,10 @@ on:
         description: "Repository description, used only when creating it"
         required: false
         default: ""
+      replace_sha:
+        description: "One-off history rewrite: current main SHA to replace (force-with-lease)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -35,6 +39,7 @@ jobs:
       OWNER: osama-fattah
       REPO: ${{ inputs.repo }}
       DESCRIPTION: ${{ inputs.description }}
+      REPLACE_SHA: ${{ inputs.replace_sha }}
       GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
     steps:
       - name: Validate input
@@ -79,7 +84,12 @@ jobs:
 
       - name: Fast-forward main
         run: |
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${REPO}.git" HEAD:refs/heads/main
+          lease=()
+          if [[ -n "$REPLACE_SHA" ]]; then
+            [[ "$REPLACE_SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::replace_sha must be a full SHA"; exit 1; }
+            lease=(--force-with-lease="main:${REPLACE_SHA}")
+          fi
+          git push "${lease[@]}" "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${REPO}.git" HEAD:refs/heads/main
           echo "Published $(git rev-parse --short HEAD) to https://github.com/${OWNER}/${REPO}" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Wait for the target repository's CI
