@@ -3,7 +3,8 @@
 # Push the full history of a project to a branch named publish/<repo> in this
 # repository, then run this workflow with repo=<repo>. It creates
 # osama-fattah/<repo> if it does not exist, fast-forwards its main branch to the
-# prepared history (never force), and deletes the publish/<repo> branch.
+# prepared history (never force), waits for that repository's CI to finish
+# (the run fails if CI fails), and deletes the publish/<repo> branch.
 #
 # Requires the PUBLISH_TOKEN secret: a fine-grained token with access to all
 # repositories and Administration, Contents and Workflows read/write.
@@ -66,5 +67,29 @@ jobs:
           git push "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${REPO}.git" HEAD:refs/heads/main
           echo "Published $(git rev-parse --short HEAD) to https://github.com/${OWNER}/${REPO}" >> "$GITHUB_STEP_SUMMARY"
 
+      - name: Wait for the target repository's CI
+        run: |
+          sha=$(git rev-parse HEAD)
+          if [[ ! -d .github/workflows ]]; then
+            echo "No workflows in $REPO; nothing to wait for" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          for i in $(seq 1 60); do
+            runs=$(gh run list -R "$OWNER/$REPO" --commit "$sha" --json status,conclusion,name \
+              --jq 'map(select(.name != "publish"))')
+            total=$(jq length <<<"$runs")
+            pending=$(jq '[.[] | select(.status != "completed")] | length' <<<"$runs")
+            if [[ "$total" -gt 0 && "$pending" -eq 0 ]]; then
+              jq -r '.[] | "- \(.name): \(.conclusion)"' <<<"$runs" >> "$GITHUB_STEP_SUMMARY"
+              failed=$(jq '[.[] | select(.conclusion != "success" and .conclusion != "skipped")] | length' <<<"$runs")
+              [[ "$failed" -eq 0 ]] || { echo "::error::CI failed in $OWNER/$REPO for $sha"; exit 1; }
+              exit 0
+            fi
+            sleep 15
+          done
+          echo "::error::timed out waiting for CI in $OWNER/$REPO"
+          exit 1
+
       - name: Remove publish branch
+        if: always()
         run: git push "https://x-access-token:${GH_TOKEN}@github.com/${OWNER}/${OWNER}.git" --delete "publish/${REPO}"
