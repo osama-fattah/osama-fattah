@@ -17,7 +17,11 @@ on:
         description: "Target repository name (osama-fattah/<repo>)"
         required: true
       description:
-        description: "Repository description, used only when creating it"
+        description: "Repository description (set on create, or updated when given)"
+        required: false
+        default: ""
+      homepage:
+        description: "Optional website / live demo URL shown in the repository's About box"
         required: false
         default: ""
 
@@ -35,6 +39,7 @@ jobs:
       OWNER: osama-fattah
       REPO: ${{ inputs.repo }}
       DESCRIPTION: ${{ inputs.description }}
+      HOMEPAGE: ${{ inputs.homepage }}
       GH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
     steps:
       - name: Validate input
@@ -60,6 +65,13 @@ jobs:
             echo "Repository $OWNER/$REPO exists"
           else
             gh repo create "$OWNER/$REPO" --public --description "$DESCRIPTION"
+          fi
+          if [[ -n "$HOMEPAGE" ]]; then
+            [[ "$HOMEPAGE" =~ ^https://[A-Za-z0-9./_-]+$ ]] || { echo "::error::homepage must be an https URL"; exit 1; }
+            gh repo edit "$OWNER/$REPO" --homepage "$HOMEPAGE"
+          fi
+          if [[ -n "$DESCRIPTION" ]]; then
+            gh repo edit "$OWNER/$REPO" --description "$DESCRIPTION"
           fi
 
       - name: Refuse AI attribution in new commits
